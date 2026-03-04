@@ -101,12 +101,12 @@ EOF
 ```bash
 # Create role for Textract function
 aws iam create-role \
-  --role-name textract-id-analyzer-role \
+  --role-name uniti-textract-id-analyzer-role \
   --assume-role-policy-document file://trust-policy.json \
   --region us-east-1
 
 # Save the role ARN
-TEXTRACT_ROLE_ARN=$(aws iam get-role --role-name textract-id-analyzer-role --query 'Role.Arn' --output text)
+TEXTRACT_ROLE_ARN=$(aws iam get-role --role-name uniti-textract-id-analyzer-role --query 'Role.Arn' --output text)
 echo "Textract Role ARN: $TEXTRACT_ROLE_ARN"
 ```
 
@@ -115,12 +115,12 @@ echo "Textract Role ARN: $TEXTRACT_ROLE_ARN"
 ```bash
 # Create role for Selfie function
 aws iam create-role \
-  --role-name selfie-verification-role \
+  --role-name uniti-selfie-verification-role \
   --assume-role-policy-document file://trust-policy.json \
   --region us-east-1
 
 # Save the role ARN
-SELFIE_ROLE_ARN=$(aws iam get-role --role-name selfie-verification-role --query 'Role.Arn' --output text)
+SELFIE_ROLE_ARN=$(aws iam get-role --role-name uniti-selfie-verification-role --query 'Role.Arn' --output text)
 echo "Selfie Role ARN: $SELFIE_ROLE_ARN"
 ```
 
@@ -157,7 +157,7 @@ echo "Package created: textract-function.zip"
 ```bash
 # Deploy the function
 aws lambda create-function \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --runtime nodejs22.x \
   --role $TEXTRACT_ROLE_ARN \
   --handler index.handler \
@@ -174,7 +174,7 @@ echo "Textract function created successfully!"
 ```bash
 # Set environment variables for Textract function
 aws lambda update-function-configuration \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --environment "Variables={BUCKET_NAME=$BUCKET_NAME,GEMINI_API_KEY=}" \
   --region us-east-1
 
@@ -216,7 +216,7 @@ echo "Package created: selfie-function.zip"
 ```bash
 # Deploy the function
 aws lambda create-function \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --runtime nodejs22.x \
   --role $SELFIE_ROLE_ARN \
   --handler index.handler \
@@ -233,7 +233,7 @@ echo "Selfie function created successfully!"
 ```bash
 # Set environment variables for Selfie function
 aws lambda update-function-configuration \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --environment "Variables={BUCKET_NAME=$BUCKET_NAME}" \
   --region us-east-1
 
@@ -266,7 +266,7 @@ cat > textract-s3-policy.json << 'EOF'
 EOF
 
 aws iam put-role-policy \
-  --role-name textract-id-analyzer-role \
+  --role-name uniti-textract-id-analyzer-role \
   --policy-name textract-s3-policy \
   --policy-document file://textract-s3-policy.json
 ```
@@ -290,7 +290,7 @@ cat > textract-textract-policy.json << 'EOF'
 EOF
 
 aws iam put-role-policy \
-  --role-name textract-id-analyzer-role \
+  --role-name uniti-textract-id-analyzer-role \
   --policy-name textract-textract-policy \
   --policy-document file://textract-textract-policy.json
 ```
@@ -314,7 +314,7 @@ cat > textract-logs-policy.json << 'EOF'
                 "logs:PutLogEvents"
             ],
             "Resource": [
-                "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/textract-id-analyzer:*"
+                "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/uniti-textract-id-analyzer:*"
             ]
         }
     ]
@@ -322,7 +322,7 @@ cat > textract-logs-policy.json << 'EOF'
 EOF
 
 aws iam put-role-policy \
-  --role-name textract-id-analyzer-role \
+  --role-name uniti-textract-id-analyzer-role \
   --policy-name textract-logs-policy \
   --policy-document file://textract-logs-policy.json
 ```
@@ -348,7 +348,7 @@ cat > selfie-rekognition-policy.json << 'EOF'
 EOF
 
 aws iam put-role-policy \
-  --role-name selfie-verification-role \
+  --role-name uniti-selfie-verification-role \
   --policy-name selfie-rekognition-policy \
   --policy-document file://selfie-rekognition-policy.json
 ```
@@ -373,7 +373,7 @@ cat > selfie-s3-policy.json << 'EOF'
 EOF
 
 aws iam put-role-policy \
-  --role-name selfie-verification-role \
+  --role-name uniti-selfie-verification-role \
   --policy-name selfie-s3-policy \
   --policy-document file://selfie-s3-policy.json
 ```
@@ -397,7 +397,7 @@ cat > selfie-logs-policy.json << 'EOF'
                 "logs:PutLogEvents"
             ],
             "Resource": [
-                "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/selfie-verification:*"
+                "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/uniti-selfie-verification:*"
             ]
         }
     ]
@@ -405,7 +405,7 @@ cat > selfie-logs-policy.json << 'EOF'
 EOF
 
 aws iam put-role-policy \
-  --role-name selfie-verification-role \
+  --role-name uniti-selfie-verification-role \
   --policy-name selfie-logs-policy \
   --policy-document file://selfie-logs-policy.json
 ```
@@ -426,14 +426,14 @@ aws lambda list-functions --region us-east-1 --query 'Functions[*].[FunctionName
 ```bash
 # Get Textract function details
 aws lambda get-function \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --region us-east-1 \
   --query 'Configuration.[FunctionName,Runtime,Role,Handler]' \
   --output table
 
 # Get Selfie function details
 aws lambda get-function \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --region us-east-1 \
   --query 'Configuration.[FunctionName,Runtime,Role,Handler]' \
   --output table
@@ -455,7 +455,7 @@ EOF
 
 # Invoke the function
 aws lambda invoke \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --payload file://textract-test.json \
   --region us-east-1 \
   --cli-binary-format raw-in-base64-out \
@@ -476,7 +476,7 @@ EOF
 
 # Invoke the function
 aws lambda invoke \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --payload file://selfie-test.json \
   --region us-east-1 \
   --cli-binary-format raw-in-base64-out \
@@ -497,7 +497,7 @@ cd textract/
 zip -r textract-function.zip . -x "node_modules/.bin/*" "*.git*" ".DS_Store"
 
 aws lambda update-function-code \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --zip-file fileb://textract-function.zip \
   --region us-east-1
 
@@ -511,7 +511,7 @@ cd ../selfie/
 zip -r selfie-function.zip . -x "node_modules/.bin/*" "*.git*" ".DS_Store"
 
 aws lambda update-function-code \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --zip-file fileb://selfie-function.zip \
   --region us-east-1
 
@@ -523,14 +523,14 @@ echo "Selfie function code updated"
 ```bash
 # Check Textract environment variables
 aws lambda get-function-configuration \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --region us-east-1 \
   --query 'Environment.Variables' \
   --output json
 
 # Check Selfie environment variables
 aws lambda get-function-configuration \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --region us-east-1 \
   --query 'Environment.Variables' \
   --output json
@@ -547,7 +547,7 @@ Your client app needs to communicate with the Lambda functions through API Gatew
 ```bash
 # Create the REST API
 API_ID=$(aws apigateway create-rest-api \
-  --name id-verification-api \
+  --name uniti-id-verification-api \
   --description "ID Verification API for document and selfie verification" \
   --region us-east-1 \
   --query 'id' \
@@ -597,7 +597,7 @@ aws apigateway put-integration \
   --http-method POST \
   --type AWS_PROXY \
   --integration-http-method POST \
-  --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:$YOUR_ACCOUNT_ID:function:textract-id-analyzer/invocations" \
+  --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:$YOUR_ACCOUNT_ID:function:uniti-textract-id-analyzer/invocations" \
   --region us-east-1
 
 echo "Textract endpoint created: /textract"
@@ -632,7 +632,7 @@ aws apigateway put-integration \
   --http-method POST \
   --type AWS_PROXY \
   --integration-http-method POST \
-  --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:$YOUR_ACCOUNT_ID:function:selfie-verification/invocations" \
+  --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:$YOUR_ACCOUNT_ID:function:uniti-selfie-verification/invocations" \
   --region us-east-1
 
 echo "Selfie endpoint created: /selfie"
@@ -643,7 +643,7 @@ echo "Selfie endpoint created: /selfie"
 ```bash
 # For Textract Lambda
 aws lambda add-permission \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --statement-id apigateway-textract-invoke \
   --action lambda:InvokeFunction \
   --principal apigateway.amazonaws.com \
@@ -654,7 +654,7 @@ echo "Permission granted for API Gateway to invoke Textract Lambda"
 
 # For Selfie Lambda
 aws lambda add-permission \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --statement-id apigateway-selfie-invoke \
   --action lambda:InvokeFunction \
   --principal apigateway.amazonaws.com \
@@ -776,13 +776,13 @@ aws apigateway delete-rest-api --rest-api-id <API_ID> --region us-east-1
 ```bash
 # Update Textract timeout
 aws lambda update-function-configuration \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --timeout 120 \
   --region us-east-1
 
 # Update Selfie memory
 aws lambda update-function-configuration \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --memory-size 512 \
   --region us-east-1
 ```
@@ -790,12 +790,12 @@ aws lambda update-function-configuration \
 ### Delete Functions
 ```bash
 # Delete functions if needed
-aws lambda delete-function --function-name textract-id-analyzer --region us-east-1
-aws lambda delete-function --function-name selfie-verification --region us-east-1
+aws lambda delete-function --function-name uniti-textract-id-analyzer --region us-east-1
+aws lambda delete-function --function-name uniti-selfie-verification --region us-east-1
 
 # Delete roles
-aws iam delete-role --role-name textract-id-analyzer-role
-aws iam delete-role --role-name selfie-verification-role
+aws iam delete-role --role-name uniti-textract-id-analyzer-role
+aws iam delete-role --role-name uniti-selfie-verification-role
 
 # Delete S3 bucket
 aws s3 rb s3://$BUCKET_NAME --force
@@ -844,11 +844,11 @@ cat > trust-policy.json << 'EOF'
 }
 EOF
 
-aws iam create-role --role-name textract-id-analyzer-role --assume-role-policy-document file://trust-policy.json
-aws iam create-role --role-name selfie-verification-role --assume-role-policy-document file://trust-policy.json
+aws iam create-role --role-name uniti-textract-id-analyzer-role --assume-role-policy-document file://trust-policy.json
+aws iam create-role --role-name uniti-selfie-verification-role --assume-role-policy-document file://trust-policy.json
 
-TEXTRACT_ROLE_ARN=$(aws iam get-role --role-name textract-id-analyzer-role --query 'Role.Arn' --output text)
-SELFIE_ROLE_ARN=$(aws iam get-role --role-name selfie-verification-role --query 'Role.Arn' --output text)
+TEXTRACT_ROLE_ARN=$(aws iam get-role --role-name uniti-textract-id-analyzer-role --query 'Role.Arn' --output text)
+SELFIE_ROLE_ARN=$(aws iam get-role --role-name uniti-selfie-verification-role --query 'Role.Arn' --output text)
 
 echo "Step 3: Packaging and deploying Textract..."
 cd textract/
@@ -856,7 +856,7 @@ npm install
 zip -r textract-function.zip . -x "node_modules/.bin/*" "*.git*" ".DS_Store"
 
 aws lambda create-function \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --runtime nodejs22.x \
   --role $TEXTRACT_ROLE_ARN \
   --handler index.handler \
@@ -866,7 +866,7 @@ aws lambda create-function \
   --region $REGION
 
 aws lambda update-function-configuration \
-  --function-name textract-id-analyzer \
+  --function-name uniti-textract-id-analyzer \
   --environment "Variables={BUCKET_NAME=$BUCKET_NAME,GEMINI_API_KEY=$GEMINI_API_KEY}" \
   --region $REGION
 
@@ -876,7 +876,7 @@ npm install
 zip -r selfie-function.zip . -x "node_modules/.bin/*" "*.git*" ".DS_Store"
 
 aws lambda create-function \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --runtime nodejs22.x \
   --role $SELFIE_ROLE_ARN \
   --handler index.handler \
@@ -886,7 +886,7 @@ aws lambda create-function \
   --region $REGION
 
 aws lambda update-function-configuration \
-  --function-name selfie-verification \
+  --function-name uniti-selfie-verification \
   --environment "Variables={BUCKET_NAME=$BUCKET_NAME}" \
   --region $REGION
 
