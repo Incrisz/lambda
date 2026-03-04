@@ -41,13 +41,12 @@ Create an S3 bucket to store ID documents and selfie images.
 
 ```bash
 # Set bucket name (must be globally unique)
-BUCKET_NAME="id-verification-bucket"
+BUCKET_NAME="uniti-id-verification-bucket"
 
-# Create the bucket
+# Create the bucket (us-east-1 doesn't need LocationConstraint)
 aws s3api create-bucket \
   --bucket $BUCKET_NAME \
-  --region us-east-1 \
-  --create-bucket-configuration LocationConstraint=us-east-1
+  --region us-east-1
 
 # Enable versioning (optional but recommended)
 aws s3api put-bucket-versioning \
@@ -176,7 +175,7 @@ echo "Textract function created successfully!"
 # Set environment variables for Textract function
 aws lambda update-function-configuration \
   --function-name textract-id-analyzer \
-  --environment "Variables={BUCKET_NAME=$BUCKET_NAME,GEMINI_API_KEY=your-gemini-api-key}" \
+  --environment "Variables={BUCKET_NAME=$BUCKET_NAME,GEMINI_API_KEY=AIzaSyCG-axA1XCGMB9rrnjM-y_zw5DN4tXZVso}" \
   --region us-east-1
 
 echo "Environment variables set for Textract function"
@@ -821,10 +820,17 @@ BUCKET_NAME="id-verification-bucket-$(date +%s)"
 GEMINI_API_KEY="your-gemini-api-key"
 
 echo "Step 1: Creating S3 bucket..."
-aws s3api create-bucket \
-  --bucket $BUCKET_NAME \
-  --region $REGION \
-  --create-bucket-configuration LocationConstraint=$REGION
+# Note: LocationConstraint only needed for non-us-east-1 regions
+if [ "$REGION" != "us-east-1" ]; then
+  aws s3api create-bucket \
+    --bucket $BUCKET_NAME \
+    --region $REGION \
+    --create-bucket-configuration LocationConstraint=$REGION
+else
+  aws s3api create-bucket \
+    --bucket $BUCKET_NAME \
+    --region $REGION
+fi
 
 echo "Step 2: Creating IAM roles..."
 cat > trust-policy.json << 'EOF'
