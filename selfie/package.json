@@ -1,0 +1,9 @@
+{
+  "name": "selfie-verification",
+  "version": "1.0.0",
+  "description": "AWS Lambda functions for Selfie verification that uses AWS Rekognition",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1450.0"
+  }
+}

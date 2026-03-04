@@ -1,0 +1,3 @@
+*.zip
+selfie/node_modules
+textract/node_modules
