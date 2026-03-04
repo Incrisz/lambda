@@ -175,7 +175,7 @@ echo "Textract function created successfully!"
 # Set environment variables for Textract function
 aws lambda update-function-configuration \
   --function-name textract-id-analyzer \
-  --environment "Variables={BUCKET_NAME=$BUCKET_NAME,GEMINI_API_KEY=AIzaSyCG-axA1XCGMB9rrnjM-y_zw5DN4tXZVso}" \
+  --environment "Variables={BUCKET_NAME=$BUCKET_NAME,GEMINI_API_KEY=}" \
   --region us-east-1
 
 echo "Environment variables set for Textract function"
