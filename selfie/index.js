@@ -5,7 +5,8 @@ const rekognition = new AWS.Rekognition();
 
 exports.handler = async (event) => {
     try {
-        const { image, userId } = event;
+        // Parse request body from API Gateway
+        const { image, userId } = JSON.parse(event.body);
     
         
         if (!image) {
@@ -91,7 +92,7 @@ exports.handler = async (event) => {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            body: {
+            body: JSON.stringify({
                 isHuman,
                 confidence: faceDetails.Confidence,
                 faceAttributes: {
@@ -105,7 +106,7 @@ exports.handler = async (event) => {
                 images: {
                     selfie: `https://${bucketName}.s3.amazonaws.com/${selfieKey}`,
                 }
-            }
+            })
         };
     } catch (error) {
         console.error('Error processing face:', error);

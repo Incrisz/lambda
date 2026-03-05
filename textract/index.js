@@ -66,8 +66,12 @@ exports.handler = async (event) => {
         };
 
 
+        // Log Textract response for debugging
+        console.log('Textract response:', JSON.stringify(textractResponse));
+        
         // Use Gemini AI to parse Textract response
         const extractedFields = await parseWithGemini(textractResponse);
+        console.log('Extracted fields:', JSON.stringify(extractedFields));
 
         // Add confidence scoring and validation
         const validateAndScore = (fields) => {
@@ -192,14 +196,16 @@ exports.handler = async (event) => {
                 const result = await model.generateContent(prompt);
                 const response = result.response;
                 const text = response.text();
-                console.log('Gemini response:', text);
+                console.log('Gemini response text:', text);
                 
                 // Extract JSON from response
                 const jsonMatch = text.match(/\{[^}]*\}/);
                 if (jsonMatch) {
                     const finalResult = JSON.parse(jsonMatch[0]);
+                    console.log('Parsed JSON from Gemini:', JSON.stringify(finalResult));
                     return finalResult;
                 }
+                console.log('No JSON found in Gemini response');
                 return {};
             } catch (error) {
                 console.error('Gemini parsing error:', error);
