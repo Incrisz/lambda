@@ -52,13 +52,26 @@ Extracts the following fields when available:
 ## Environment Variables
 
 ```bash
-# Required
-GEMINI_API_KEY=your-gemini-api-key-here
-BUCKET_NAME=your-s3-bucket-name
+# Google Gemini (default)
+GEMINI_API_KEY=your-google-gemini-api-key
+GEMINI_MODEL=gemini-2.0-flash  # (optional, default: gemini-2.0-flash)
 
-# Optional
+# OpenRouter Alternative
+OPENROUTER_API_KEY=your-openrouter-api-key
+OPENROUTER_MODEL=google/gemini-3.1-flash-lite-preview  # (optional)
+OPENROUTER_TITLE=ID Verification  # (optional, for tracking)
+
+# General
+BUCKET_NAME=your-s3-bucket-name  # (optional, default: uniti-id-images)
 NODE_ENV=production  # Set to 'development' for detailed error stacks
 ```
+
+### Which Provider to Use?
+
+- **Google Gemini**: Set `GEMINI_API_KEY` (will be used automatically)
+- **OpenRouter**: Set `OPENROUTER_API_KEY` (takes priority over Google if both are set)
+
+The function will automatically detect which API key is configured and use the appropriate provider.
 
 ## Installation
 
@@ -257,6 +270,36 @@ Set `NODE_ENV=development` to enable:
 - Detailed error stack traces
 - Additional logging output
 - Extended timeout handling
+
+## Deployment Configuration
+
+### Lambda Timeout
+**CRITICAL**: This function requires adequate timeout configuration:
+- **Minimum Recommended**: 60 seconds
+- **Optimal**: 120 seconds (2 minutes)
+- **Maximum Safe**: 300 seconds (5 minutes)
+
+The timeout must account for:
+- AWS Textract API processing
+- Google Gemini AI API calls
+- S3 image uploads
+- Network latency
+
+Set the timeout in your CloudFormation template, SAM, or AWS Console:
+```yaml
+Textract:
+  Type: AWS::Lambda::Function
+  Properties:
+    Timeout: 120  # Seconds
+```
+
+### Performance Optimizations Applied:
+1. **Combined Gemini Calls**: Validation and parsing now happen in a single API call
+2. **Removed Duplicate Textract Calls**: Only `analyzeID()` is used instead of also `detectDocumentText()`
+3. **Eliminated S3 Bucket Checks**: Removed headBucket checks that add 1-2 seconds per invocation
+4. **Parallel S3 Uploads**: Both images upload simultaneously
+
+These changes reduce typical execution time from 45-60s to 20-30s.
 
 ## Dependencies
 

@@ -21,16 +21,7 @@ exports.handler = async (event) => {
         const frontImageBytes = Buffer.from(frontImage, 'base64');
         const backImageBytes = Buffer.from(backImage, 'base64');
         
-        // Validate images are real IDs using Gemini
-        const isValidID = await validateIDWithGemini(frontImage, backImage);
-        if (!isValidID) {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({ error: 'Images do not appear to be valid ID documents' })
-            };
-        }
-        
-        // Call Textract to analyze the ID
+        // Call Textract to analyze the ID (only once, not duplicate calls)
         const params = {
             DocumentPages: [
                 { Bytes: frontImageBytes },
@@ -39,38 +30,12 @@ exports.handler = async (event) => {
         };
         
         const textractResponse = await textract.analyzeID(params).promise();
-        
-        // Also try general text detection for better Spanish ID parsing
-        const frontTextParams = {
-            Document: { Bytes: frontImageBytes }
-        };
-        const backTextParams = {
-            Document: { Bytes: backImageBytes }
-        };
-        const [frontTextResponse, backTextResponse] = await Promise.all([
-            textract.detectDocumentText(frontTextParams).promise(),
-            textract.detectDocumentText(backTextParams).promise()
-        ]);
-
-        // Helper function to normalize field names
-        const normalizeFieldName = (text) => {
-            return text.toLowerCase()
-                .replace(/[áàäâ]/g, 'a')
-                .replace(/[éèëê]/g, 'e')
-                .replace(/[íìïî]/g, 'i')
-                .replace(/[óòöô]/g, 'o')
-                .replace(/[úùüû]/g, 'u')
-                .replace(/ñ/g, 'n')
-                .replace(/ç/g, 'c')
-                .trim();
-        };
-
 
         // Log Textract response for debugging
         console.log('Textract response:', JSON.stringify(textractResponse));
         
-        // Use Gemini AI to parse Textract response
-        const extractedFields = await parseWithGemini(textractResponse);
+        // Use Gemini AI to validate AND parse in a single call (reduced API latency)
+        const extractedFields = await validateAndParseWithGemini(frontImage, backImage, textractResponse);
         console.log('Extracted fields:', JSON.stringify(extractedFields));
 
         // Add confidence scoring and validation
@@ -124,91 +89,124 @@ exports.handler = async (event) => {
             };
         };
         
-        // Helper function to validate ID authenticity with Gemini AI
-        async function validateIDWithGemini(frontImageBase64, backImageBase64) {
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-            
+        // Helper function to validate AND parse with Gemini AI in a single call
+        async function validateAndParseWithGemini(frontImageBase64, backImageBase64, textractResponse) {
             const prompt = `
-                Analyze these two images to determine if they are authentic government-issued ID documents (like driver's license, passport, national ID card, etc.) or fake/drawn images.
+                Analyze these ID document images and the Textract response below. 
                 
-                Look for:
-                - Professional printing quality and layout
-                - Official government seals, logos, or security features
-                - Consistent typography and formatting
-                - Photo quality and placement
-                - Overall document structure and design
+                First, validate if these are authentic government-issued ID documents (return false if they appear fake/drawn/invalid).
                 
-                Return only "true" if these appear to be real ID documents, or "false" if they appear to be fake, drawn, or not legitimate ID documents.
-            `;
-            
-            try {
-                const result = await model.generateContent([
-                    prompt,
-                    {
-                        inlineData: {
-                            data: frontImageBase64,
-                            mimeType: 'image/jpeg'
-                        }
-                    },
-                    {
-                        inlineData: {
-                            data: backImageBase64,
-                            mimeType: 'image/jpeg'
-                        }
-                    }
-                ]);
-                
-                const response = result.response.text().toLowerCase().trim();
-                console.log('ID validation response:', response);
-                return response === 'true';
-            } catch (error) {
-                console.error('Gemini validation error:', error);
-                // If validation fails, allow processing to continue
-                return true;
-            }
-        }
-        
-        // Helper function to parse with Gemini AI
-        async function parseWithGemini(textractResponse) {
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-            
-            const prompt = `
-                Analyze this Textract response from an ID document and extract the following fields:
+                Then extract these fields:
                 - firstName
                 - lastName
                 - dateOfBirth
                 - expirationDate
                 - issueDate
                 - idNumber
-                - gender
-                - country
-
-                Note: gender should always be Male or Female even if the card uses M or F or any other form, transform to Male or Female
+                - gender (normalize to "Male" or "Female")
+                - country/nationality
 
                 Textract Response: ${JSON.stringify(textractResponse)}
 
-                Return only a JSON object with the extracted fields. If a field is not found, omit it from the response.
-                `;
+                Return a JSON object with:
+                {
+                  "isValid": true/false,
+                  "firstName": "...",
+                  "lastName": "...",
+                  etc
+                }
+                If a field is not found, omit it. Only return the JSON object, no other text.
+            `;
             
             try {
-                const result = await model.generateContent(prompt);
-                const response = result.response;
-                const text = response.text();
-                console.log('Gemini response text:', text);
+                let text;
+                
+                // Use OpenRouter if API key is provided, otherwise use Google Gemini
+                if (process.env.OPENROUTER_API_KEY) {
+                    console.log('Using OpenRouter API');
+                    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                            'X-Title': process.env.OPENROUTER_TITLE || 'ID Verification'
+                        },
+                        body: JSON.stringify({
+                            model: process.env.OPENROUTER_MODEL || 'google/gemini-3.1-flash-lite-preview',
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: [
+                                        { type: 'text', text: prompt },
+                                        {
+                                            type: 'image',
+                                            image: frontImageBase64
+                                        },
+                                        {
+                                            type: 'image',
+                                            image: backImageBase64
+                                        }
+                                    ]
+                                }
+                            ]
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(`OpenRouter API error: ${error.error?.message || response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    text = data.choices[0].message.content;
+                } else {
+                    console.log('Using Google Gemini API');
+                    const { GoogleGenerativeAI } = require('@google/generative-ai');
+                    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                    const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.0-flash' });
+                    
+                    const result = await model.generateContent([
+                        prompt,
+                        {
+                            inlineData: {
+                                data: frontImageBase64,
+                                mimeType: 'image/jpeg'
+                            }
+                        },
+                        {
+                            inlineData: {
+                                data: backImageBase64,
+                                mimeType: 'image/jpeg'
+                            }
+                        }
+                    ]);
+                    
+                    text = result.response.text();
+                }
+                
+                console.log('AI response:', text);
                 
                 // Extract JSON from response
-                const jsonMatch = text.match(/\{[^}]*\}/);
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                    const finalResult = JSON.parse(jsonMatch[0]);
-                    console.log('Parsed JSON from Gemini:', JSON.stringify(finalResult));
-                    return finalResult;
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    
+                    // Check if document is valid
+                    if (parsed.isValid === false) {
+                        throw new Error('Images do not appear to be valid ID documents');
+                    }
+                    
+                    // Remove the isValid flag since we've checked it
+                    delete parsed.isValid;
+                    return parsed;
                 }
-                console.log('No JSON found in Gemini response');
                 return {};
             } catch (error) {
-                console.error('Gemini parsing error:', error);
+                console.error('AI validation/parsing error:', error);
+                // If validation fails, allow processing to continue with warning
+                if (error.message.includes('valid ID documents')) {
+                    throw error;
+                }
                 return {};
             }
         }
@@ -220,18 +218,7 @@ exports.handler = async (event) => {
         const s3 = new AWS.S3();
         const bucketName = process.env.BUCKET_NAME || 'uniti-id-images';
         
-        // Check if bucket exists, create if it doesn't
-        try {
-            await s3.headBucket({ Bucket: bucketName }).promise();
-        } catch (error) {
-            if (error.code === 'NotFound' || error.code === 'NoSuchBucket') {
-                await s3.createBucket({ Bucket: bucketName }).promise();
-            } else {
-                throw error;
-            }
-        }
-        
-        // Save front and back images
+        // Save front and back images (skip bucket existence check for faster execution)
         const frontKey = `${userId}/front.jpg`;
         const backKey = `${userId}/back.jpg`;
         
